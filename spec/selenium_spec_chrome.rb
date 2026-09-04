@@ -152,6 +152,50 @@ RSpec.describe 'Capybara::Session with chrome' do
     end
   end
 
+  describe 'detached node errors' do
+    let(:session) { TestSessions::Chrome }
+    let(:detached_node_error) do
+      Selenium::WebDriver::Error::UnknownError.new(
+        'unknown error: unhandled inspector error: ' \
+        '{"code":-32000,"message":"Node with given id does not belong to the document"}'
+      )
+    end
+
+    it 'retries when chromedriver reports a node of a replaced document as an unknown error' do
+      session.visit('/with_html')
+      element = session.find(:css, '#first')
+      raised = false
+      allow(element.base).to receive(:visible?).and_wrap_original do |original|
+        unless raised
+          raised = true
+          raise detached_node_error
+        end
+        original.call
+      end
+
+      expect(element).to be_visible
+      expect(raised).to be true
+    end
+
+    it 'retries the error inside synchronize' do
+      attempts = 0
+      result = session.document.synchronize(2) do
+        attempts += 1
+        raise detached_node_error if attempts == 1
+
+        attempts
+      end
+
+      expect(result).to eq 2
+    end
+
+    it 'does not retry other unknown errors' do
+      expect do
+        session.document.synchronize(2) { raise Selenium::WebDriver::Error::UnknownError, 'cannot determine loading status' }
+      end.to raise_error(Selenium::WebDriver::Error::UnknownError, /loading status/)
+    end
+  end
+
   describe 'filling in Chrome-specific date and time fields with keystrokes' do
     let(:datetime) { Time.new(1983, 6, 19, 6, 30) }
     let(:session) { TestSessions::Chrome }

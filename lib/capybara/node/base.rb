@@ -132,8 +132,9 @@ module Capybara
     protected
 
       def catch_error?(error, errors = nil)
-        errors ||= (driver.invalid_element_errors + [Capybara::ElementNotFound])
-        errors.any? { |type| error.is_a?(type) }
+        return errors.any? { |type| error.is_a?(type) } if errors
+
+        error.is_a?(Capybara::ElementNotFound) || driver.invalid_element_error?(error)
       end
 
       def driver
