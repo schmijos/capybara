@@ -33,6 +33,10 @@ module Capybara::Selenium::Driver::ChromeDriver
     super
   end
 
+  def invalid_element_error?(error)
+    super || detached_node_error?(error)
+  end
+
   def reset!
     # Use instance variable directly so we avoid starting the browser just to reset the session
     return unless @browser
@@ -55,6 +59,12 @@ module Capybara::Selenium::Driver::ChromeDriver
   end
 
 private
+
+  # Chromedriver reports a node of a replaced document as an UnknownError instead of a StaleElementReferenceError
+  def detached_node_error?(error)
+    error.is_a?(::Selenium::WebDriver::Error::UnknownError) &&
+      error.message.include?('Node with given id does not belong to the document')
+  end
 
   def storage_types_to_clear
     types = ['cookies']

@@ -156,6 +156,10 @@ class Capybara::Driver::Base
     []
   end
 
+  def invalid_element_error?(error)
+    invalid_element_errors.any? { |type| error.is_a?(type) }
+  end
+
   def wait?
     false
   end
